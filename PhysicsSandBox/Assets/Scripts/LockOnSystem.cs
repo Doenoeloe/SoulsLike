@@ -26,7 +26,7 @@ public class LockOnSystem : MonoBehaviour
     GameObject lockOnInstance;
     Camera cam;
 
-    void Reset()
+    private void Reset()
     {
         // auto-add/configure the trigger collider
         var col = GetComponent<SphereCollider>();
@@ -51,8 +51,7 @@ public class LockOnSystem : MonoBehaviour
         // Cycle through the **already accumulated** targets
         if (currentTarget != null)
         {
-            if (Input.GetKeyDown(nextKey)) CycleTarget(+1);
-            else if (Input.GetKeyDown(prevKey)) CycleTarget(-1);
+            if (Input.GetKeyDown(nextKey)) CycleTarget(+1);else if (Input.GetKeyDown(prevKey)) CycleTarget(-1);
 
             // If the current target was destroyed/deactivated, drop lock
             if (!IsTargetStillAlive(currentTarget))
