@@ -27,7 +27,8 @@ public class PlayerLocomotion : MonoBehaviour
 
     float currentStamina;
     bool canRoll = true;
-
+    
+    Vector3 inputDir;
     void Start()
     {
         currentStamina = maxStamina;
@@ -35,7 +36,26 @@ public class PlayerLocomotion : MonoBehaviour
 
     void Update()
     {
-        Vector3 inputDir = GetCameraRelativeInput();
+        
+        if (lockOnSystem != null && lockOnSystem.currentTarget != null)
+        {
+            // Strafing movement relative to locked-on target
+            Vector3 toTarget = lockOnSystem.currentTarget.position - transform.position;
+            toTarget.y = 0;
+            toTarget.Normalize();
+
+            Vector3 right = Vector3.Cross(Vector3.up, toTarget);
+            float h = Input.GetAxis("Horizontal");
+            float v = Input.GetAxis("Vertical");
+
+            inputDir = toTarget * v + right * h;
+            inputDir = Vector3.ClampMagnitude(inputDir, 1f);
+        }
+        else
+        {
+            // Free movement
+            inputDir = GetCameraRelativeInput();
+        }
         // 1) Handle Roll Input
         if (Input.GetButtonDown("Roll") && canRoll && currentStamina >= rollStaminaCost)
         {
@@ -71,7 +91,7 @@ public class PlayerLocomotion : MonoBehaviour
         Vector3 flatVel = new Vector3(velocity.x, 0, velocity.z);
 
         // Smooth rotation only if moving
-        if (flatVel.sqrMagnitude > 0.001f)
+        if (flatVel.sqrMagnitude > 0.001f && (lockOnSystem == null || lockOnSystem.currentTarget == null))
         {
             Quaternion targetRot = Quaternion.LookRotation(flatVel);
             rb.rotation = Quaternion.Slerp(rb.rotation, targetRot, rotationSpeed * Time.deltaTime);

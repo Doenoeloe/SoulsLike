@@ -6,20 +6,16 @@ using System.Linq;
 [RequireComponent(typeof(SphereCollider))]
 public class LockOnSystem : MonoBehaviour
 {
-    [Header("References")]
-    public GameObject lockOnPrefab;
+    [Header("References")] public GameObject lockOnPrefab;
     public LayerMask enemyLayer;
-
-    [Header("Input")]
-    public KeyCode lockKey = KeyCode.Tab;
+    public LayerMask slashLayer;
+    [Header("Input")] public KeyCode lockKey = KeyCode.Tab;
     public KeyCode nextKey = KeyCode.E;
     public KeyCode prevKey = KeyCode.Q;
 
-    [Header("Lock Settings")]
-    [Range(0,100)]
+    [Header("Lock Settings")] [Range(0, 100)]
     public float maxLockDist = 15f;
-
-    [HideInInspector] public List<Transform> targets = new List<Transform>();
+    public List<Transform> targets = new List<Transform>();
     public Transform currentTarget;
     int currentIndex = -1;
 
@@ -31,7 +27,7 @@ public class LockOnSystem : MonoBehaviour
         // auto-add/configure the trigger collider
         var col = GetComponent<SphereCollider>();
         col.isTrigger = true;
-        col.radius    = maxLockDist;
+        col.radius = maxLockDist;
     }
 
     void Start()
@@ -45,13 +41,14 @@ public class LockOnSystem : MonoBehaviour
         if (Input.GetKeyDown(lockKey))
         {
             if (currentTarget == null) AcquireFirstTarget();
-            else                        ClearLock();
+            else ClearLock();
         }
 
         // Cycle through the **already accumulated** targets
         if (currentTarget != null)
         {
-            if (Input.GetKeyDown(nextKey)) CycleTarget(+1);else if (Input.GetKeyDown(prevKey)) CycleTarget(-1);
+            if (Input.GetKeyDown(nextKey)) CycleTarget(+1);
+            else if (Input.GetKeyDown(prevKey)) CycleTarget(-1);
 
             // If the current target was destroyed/deactivated, drop lock
             if (!IsTargetStillAlive(currentTarget))
@@ -82,6 +79,9 @@ public class LockOnSystem : MonoBehaviour
 
     void OnTriggerExit(Collider other)
     {
+        if (other.gameObject.layer == slashLayer)
+            return;
+        
         if (((1 << other.gameObject.layer) & enemyLayer) != 0)
         {
             var t = other.transform;
@@ -93,25 +93,33 @@ public class LockOnSystem : MonoBehaviour
     }
 
     // ——— Lock / Cycle ———
-
-    void AcquireFirstTarget()
+    public void AcquireFirstTarget()
     {
-        if (targets.Count == 0) return;
+        // 0) Purge any dead or destroyed
+        targets = targets
+            .Where(IsTargetStillAlive)
+            .ToList();
 
-        // sort by angle then distance
+        if (targets.Count == 0)
+            return;
+
+        // 1) sort by angle then distance (now all t are valid)
         var sorted = targets
-            .Select(t => {
+            .Select(t =>
+            {
                 Vector3 dir = (t.position - transform.position).normalized;
                 float ang = Vector3.SignedAngle(transform.forward, dir, Vector3.up);
                 return (t, key1: Mathf.Abs(ang), key2: Vector3.Distance(transform.position, t.position));
             })
-            .OrderBy(x => x.key1).ThenBy(x => x.key2)
+            .OrderBy(x => x.key1)
+            .ThenBy(x => x.key2)
             .Select(x => x.t)
             .ToList();
 
         targets = sorted;
 
-        currentIndex  = 0;
+        // 2) pick the first
+        currentIndex = 0;
         currentTarget = targets[0];
         SpawnMarker();
     }
@@ -119,7 +127,7 @@ public class LockOnSystem : MonoBehaviour
     void ClearLock()
     {
         currentTarget = null;
-        currentIndex  = -1;
+        currentIndex = -1;
         if (lockOnInstance != null)
             Destroy(lockOnInstance);
     }
@@ -127,10 +135,9 @@ public class LockOnSystem : MonoBehaviour
     void CycleTarget(int dir)
     {
         if (targets.Count == 0) return;
-        currentIndex  = (currentIndex + dir + targets.Count) % targets.Count;
+        currentIndex = (currentIndex + dir + targets.Count) % targets.Count;
         currentTarget = targets[currentIndex];
     }
-
     bool IsTargetStillAlive(Transform t) => t != null && t.gameObject.activeInHierarchy;
 
     // ——— Marker Logic (unchanged) ———
@@ -161,5 +168,29 @@ public class LockOnSystem : MonoBehaviour
         lockOnInstance.transform.rotation = Quaternion.LookRotation(pos - cam.transform.position);
         float dist = Vector3.Distance(cam.transform.position, pos);
         lockOnInstance.transform.localScale = Vector3.one * (dist * .001f);
+    }
+
+    public void OnEnemyDeath(Transform deadTarget)
+    {
+        // 1) Remove it from the list
+        targets.Remove(deadTarget);
+
+        // 2) If it was the one we were locked on:
+        if (deadTarget == currentTarget)
+        {
+            if (targets.Count > 0)
+            {
+                // wrap currentIndex to be within the new list size
+                currentIndex = currentIndex % targets.Count;
+                currentTarget = targets[currentIndex];
+                // ensure we have a lock‐on marker
+                if (lockOnInstance == null) SpawnMarker();
+            }
+            else
+            {
+                // no more targets, clear the lock
+                ClearLock();
+            }
+        }
     }
 }

@@ -6,7 +6,7 @@ using UnityEngine;
 public class SlashTest : MonoBehaviour
 {
    public List<Slash> slashes;
-   
+   BoxCollider boxCollider;
    public bool attacking;
 
    private void Start()
