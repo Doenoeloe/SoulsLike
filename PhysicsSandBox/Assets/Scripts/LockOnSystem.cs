@@ -79,14 +79,11 @@ public class LockOnSystem : MonoBehaviour
 
     void OnTriggerExit(Collider other)
     {
-        if (other.gameObject.layer == slashLayer)
-            return;
-        
-        if (((1 << other.gameObject.layer) & enemyLayer) != 0)
+        if (((1 << other.gameObject.layer) & enemyLayer) != 0 &&
+            ((1 << other.gameObject.layer) & slashLayer) == 0)
         {
             var t = other.transform;
             targets.Remove(t);
-            // if we just lost our locked-on target, clear it
             if (t == currentTarget)
                 ClearLock();
         }

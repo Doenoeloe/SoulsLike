@@ -6,8 +6,9 @@ using Slider = UnityEngine.UI.Slider;
 
 public class PlayerLocomotion : MonoBehaviour
 {
-    [Header("References")] 
-    [SerializeField] private LockOnSystem lockOnSystem;
+    [Header("References")] [SerializeField]
+    private LockOnSystem lockOnSystem;
+
     [SerializeField] private Slider _slider;
     [SerializeField] private Transform cameraTransform;
     public Rigidbody rb;
@@ -27,8 +28,9 @@ public class PlayerLocomotion : MonoBehaviour
 
     float currentStamina;
     bool canRoll = true;
-    
+    public bool isDodging = false;
     Vector3 inputDir;
+
     void Start()
     {
         currentStamina = maxStamina;
@@ -36,7 +38,6 @@ public class PlayerLocomotion : MonoBehaviour
 
     void Update()
     {
-        
         if (lockOnSystem != null && lockOnSystem.currentTarget != null)
         {
             // Strafing movement relative to locked-on target
@@ -56,12 +57,13 @@ public class PlayerLocomotion : MonoBehaviour
             // Free movement
             inputDir = GetCameraRelativeInput();
         }
+
         // 1) Handle Roll Input
         if (Input.GetButtonDown("Roll") && canRoll && currentStamina >= rollStaminaCost)
         {
             StartCoroutine(DoRoll(inputDir));
         }
-        
+
         // 2) Movement & Animator
         float inputMag = inputDir.magnitude;
         bool isRunning = Input.GetButton("Run");
@@ -116,6 +118,7 @@ public class PlayerLocomotion : MonoBehaviour
     IEnumerator DoRoll(Vector3 rollDir)
     {
         canRoll = false;
+        isDodging = true;
         currentStamina -= rollStaminaCost;
         lastStaminaUseTime = Time.time;
         _slider.value = currentStamina;
@@ -136,6 +139,7 @@ public class PlayerLocomotion : MonoBehaviour
             rb.MovePosition(rb.position + rollDir * speed * Time.fixedDeltaTime);
             yield return new WaitForFixedUpdate();
         }
+        isDodging = false;
 
         yield return new WaitForSeconds(rollCooldown);
         canRoll = true;

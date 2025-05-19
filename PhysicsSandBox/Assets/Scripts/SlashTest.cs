@@ -8,15 +8,16 @@ public class SlashTest : MonoBehaviour
    public List<Slash> slashes;
    BoxCollider boxCollider;
    public bool attacking;
-
+   private PlayerLocomotion playerLocomotion;
    private void Start()
    {
+      playerLocomotion = GetComponent<PlayerLocomotion>();
       DisableSlashes();
    }
 
    private void Update()
    {
-      if (Input.GetMouseButtonDown(0) && !attacking)
+      if (Input.GetMouseButtonDown(0) && !attacking && !playerLocomotion.isDodging)
       {
          attacking = true;
          StartCoroutine(SlashAttack());
